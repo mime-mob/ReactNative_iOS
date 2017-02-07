@@ -1,0 +1,31 @@
+PODS:
+  - React/Core (0.41.1):
+    - React/cxxreact
+    - React/yoga
+  - React/cxxreact (0.41.1):
+    - React/jschelpers
+  - React/jschelpers (0.41.1)
+  - React/RCTNetwork (0.41.1):
+    - React/Core
+  - React/RCTText (0.41.1):
+    - React/Core
+  - React/RCTWebSocket (0.41.1):
+    - React/Core
+  - React/yoga (0.41.1)
+
+DEPENDENCIES:
+  - React/Core (from `/Users/mime/Desktop/TS/ReactNativeDemo/node_modules/react-native`)
+  - React/RCTNetwork (from `/Users/mime/Desktop/TS/ReactNativeDemo/node_modules/react-native`)
+  - React/RCTText (from `/Users/mime/Desktop/TS/ReactNativeDemo/node_modules/react-native`)
+  - React/RCTWebSocket (from `/Users/mime/Desktop/TS/ReactNativeDemo/node_modules/react-native`)
+
+EXTERNAL SOURCES:
+  React:
+    :path: "/Users/mime/Desktop/TS/ReactNativeDemo/node_modules/react-native"
+
+SPEC CHECKSUMS:
+  React: 92b73e1de23f052ab049247554427634986b40d1
+
+PODFILE CHECKSUM: b0512c7139337edfe90e240c47f94f65fcc74ccc
+
+COCOAPODS: 1.2.0

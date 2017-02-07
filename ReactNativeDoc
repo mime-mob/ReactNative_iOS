@@ -1,0 +1,267 @@
+=== 开发环境搭建
+==== 必需的软件
+===== HomeBrew
+Homebrew, Mac系统的包管理器，用于安装NodeJS和一些其他必需的工具软件。打开终端，输入如下命令：
+----------
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+----------
+注意：在Max OS X 10.11（El Capitan)版本中，homebrew在安装软件时可能会碰到/usr/local目录不可写的权限问题。可以使用下面的命令修复：
+----------
+sudo chown -R `whoami` /usr/local
+----------
+
+===== Node
+使用Homebrew来安装Node.js 或者移步： https://nodejs.org/en/[node.js官网] 下载安装包来安装。
+React Native目前需要NodeJS 5.0或更高版本。本文发布时Homebrew默认安装的是最新版本，一般都满足要求。用Homebrew安装需要在终端里输入如下命令：
+----------
+brew install node
+----------
+安装完node后建议设置npm镜像以加速后面的过程（或使用科学上网工具）。
+----------
+npm config set registry https://registry.npm.taobao.org --global
+npm config set disturl https://npm.taobao.org/dist --global
+----------
+===== Yarn、React Native的命令行工具（react-native-cli）
+Yarn是Facebook提供的替代npm的工具，可以加速node模块的下载。React Native的命令行工具用于执行创建、初始化、更新项目、运行打包服务（packager）等任务。输入如下命令：
+----------
+npm install -g yarn react-native-cli
+----------
+如果你看到EACCES: permission denied这样的权限报错，那么请参照上文的homebrew译注，修复/usr/local目录的所有权：
+----------
+sudo chown -R `whoami` /usr/local
+----------
+===== Xcode
+React Native目前需要Xcode 7.0 或更高版本。
+虽然一般来说命令行工具都是默认安装了，但你最好还是启动Xcode，并在Xcode | Preferences | Locations菜单中检查一下是否装有某个版本的Command Line Tools。Xcode的命令行工具中也包含一些必须的工具，比如git等。
+
+=== 从头开始创建react-native项目
+上述开发环境搭建好了后，在想要保存项目的地方打开终端命令，输入：
+----------
+react-native init ReactDemo
+----------
+后面的ReactDemo就是你想要创建的项目名称，可以自定义。命令执行完后，项目路径下会创建一个ReactDemo文件夹，打开文件夹，里面包含iOS和Android的react-native项目和一些配置文件，用Xcode打开iOS项目，运行。后续修改index.ios.js中的内容即可添加自己想要增加的修改。
+
+=== 嵌入到现有原生应用
+同样需要搭建好上述开发环境。
+===== package.json
+React Native的植入过程同时需要React和React Native两个node依赖包。我们把具体的依赖包记录在package.json文件中。如果项目根目录中没有这个文件，那就自己创建一个。(也可以将用命令行创建的react-native项目中的package.json文件改一下里面的项目名称然后拿过来直接用)。 +
+对于一个典型的React Native项目来说，一般package.json和index.ios.js等文件会放在项目的根目录下。而iOS相关的原生代码会放在一个名为ios/的子目录中,这里也同时放着你的Xcode项目文件（.xcodeproj）。
+下面是一个最简单的package.json的内容示例。
+----------
+{
+  "name": "ReactDemo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node node_modules/react-native/local-cli/cli.js start"
+  },
+  "dependencies": {
+    "react": "15.4.1",
+    "react-native": "0.39.2"
+  }
+}
+----------
+示例中的version字段没有太大意义（除非你要把你的项目发布到npm仓库）。scripts中是用于启动packager服务的命令。dependencies中的react和react-native的版本取决于你的具体需求。一般来说我们推荐使用最新版本。你可以使用npm info react和npm info react-native来查看当前的最新版本。
+另外，react-native对react的版本有严格要求，高于或低于某个范围都不可以。本文无法在这里列出所有react native和对应的react版本要求，只能提醒读者先尝试执行npm install，然后注意观察安装过程中的报错信息，例如require react@某.某.某版本, but none was installed，然后根据这样的提示，执行npm i -S react@某.某.某版本。
+
+===== 安装依赖包
+ok，package.json文件有了，接下来就要执行命令：
+---------
+$ npm install
+---------
+来安装文件当中列出的依赖包了。React Native框架整体是作为node模块安装到项目中的。下一步我们需要在CocoaPods的Podfile中指定我们所需要使用的组件。
+
+===== Subspecs
+在你开始把React Native植入到你的应用中之前，首先要决定具体整合的是React Native框架中的哪些部分。而这就是subspec要做的工作。在创建Podfile文件的时候，需要指定具体安装哪些React Native的依赖库。所指定的每一个库就称为一个subspec。 +
+可用的subspec都列在node_modules/react-native/React.podspec中，基本都是按其功能命名的。一般来说你首先需要添加Core，这一subspec包含了必须的AppRegistry、StyleSheet、View以及其他的一些React Native核心库。如果你想使用React Native的Text库（即<Text>组件），那就需要添加RCTText的subspec。同理，Image需要加入RCTImage，等等。
+
+===== Podfile
+在React和React Native模块成功安装到node_modules目录之后，你就可以开始创建Podfile以便选择所需的组件安装到应用中。
+
+创建Podfile的最简单的方式就是在iOS原生代码所在的目录中使用CocoaPods的init命令：
+----------
+## 在iOS原生代码所在的目录中（也就是`.xcodeproj`文件所在的目录）执行：
+$ pod init
+----------
+Podfile会创建在执行命令的目录中。你需要调整其内容以满足你的植入需求。调整后的Podfile的内容看起来类似下面这样：
+----------
+# target的名字一般与你的项目名字相同
+target 'ReactNativeDemo' do
+
+  # 'node_modules'目录一般位于根目录中
+  # 但是如果你的结构不同，那你就要根据实际路径修改下面的`:path`
+  pod 'React', :path => '../node_modules/react-native', :subspecs => [
+    'Core',
+    'RCTText',
+    'RCTNetwork',
+    'RCTWebSocket', # 这个模块是用于调试功能的
+    # 在这里继续添加你所需要的模块
+  ]
+
+end
+----------
+注意：上面有个坑，path后面的这个相对路径在执行pod install的时候会报找不到React.podspec文件的错误，这里将其改成了绝对路径就ok了
+创建好了Podfile后，就可以开始安装React Native的pod包了。执行：
+----------
+$ pod install
+----------
+然后你应该可以看到类似下面的输出(译注：同样由于众所周知的网络原因，pod install的过程在国内非常不顺利，请自行配备稳定的翻墙工具，或是尝试一些镜像源)：
+----------
+Analyzing dependencies
+Fetching podspec for `React` from `../node_modules/react-native`
+Downloading dependencies
+Installing React (0.26.0)
+Generating Pods project
+Integrating client project
+Sending stats
+Pod installation complete! There are 3 dependencies from the Podfile and 1 total pod installed.
+----------
+===== 代码集成
+现在我们已经准备好了所有依赖，可以开始着手修改原生代码来把React Native真正植入到应用中了。
+在我们的2048示例中，首先尝试添加一个显示有"High Score"（得分排行榜）的React Native页面。
+我们首先要写的是"High Score"（得分排行榜）的JavaScript端的代码。
+
+- 创建一个index.ios.js文件
+
+首先创建一个空的index.ios.js文件。一般来说我们把它放置在项目根目录下。index.ios.js是React Native应用在iOS上的入口文件。而且它是不可或缺的！它可以是个很简单的文件，简单到可以只包含一行require/import导入语句。
+本教程中为了简单示范，把全部的代码都写到了index.ios.js里（当然实际开发中我们并不推荐这样做）。
+
+- 添加你自己的React Native代码
+
+在index.ios.js中添加你自己的组件。这里我们只是简单的添加一个<Text>组件，然后用一个带有样式的<View>组件把它包起来。
+----------
+'use strict';
+
+import React from 'react';
+import {
+  AppRegistry,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
+
+class RNHighScores extends React.Component {
+  render() {
+    var contents = this.props["scores"].map(
+      score => <Text key={score.name}>{score.name}:{score.value}{"\n"}</Text>
+    );
+    return (
+      <View style={styles.container}>
+        <Text style={styles.highScoresTitle}>
+          2048 High Scores!
+        </Text>
+        <Text style={styles.scores}>
+          {contents}
+        </Text>
+      </View>
+    );
+  }
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  highScoresTitle: {
+    fontSize: 20,
+    textAlign: 'center',
+    margin: 10,
+  },
+  scores: {
+    textAlign: 'center',
+    color: '#333333',
+    marginBottom: 5,
+  },
+});
+
+// 整体js模块的名称
+AppRegistry.registerComponent('RNHighScores', () => RNHighScores);
+----------
+现在我们已经在index.ios.js中创建了React Native组件，下一步就是把这个组件添加给一个新的或已有的ViewController，这里的Demo中用的是项目中初始化的ViewController。将ViewController作为app初始化时的rootViewController。
+ViewController.m中的代码如下：
+----------
+#import "ViewController.h"
+#import <React/RCTRootView.h>
+
+@interface ViewController ()
+
+@property (nonatomic, strong) UIButton *heightScoreButton;
+
+@end
+
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:self.heightScoreButton];
+}
+
+- (UIButton *)heightScoreButton {
+    if (!_heightScoreButton) {
+        _heightScoreButton = [[UIButton alloc] initWithFrame:CGRectMake(20, 200, 100, 50)];
+        [_heightScoreButton setTitle:@"HeightScore" forState:UIControlStateNormal];
+        [_heightScoreButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+        [_heightScoreButton addTarget:self action:@selector(heightScoreButtonPressed) forControlEvents:UIControlEventTouchUpInside];
+    }
+    return _heightScoreButton;
+}
+
+- (void)heightScoreButtonPressed {
+    NSLog(@"High Score Button Pressed");
+    NSURL *jsCodeLocation = [NSURL
+                             URLWithString:@"http://localhost:8081/index.ios.bundle?platform=ios"];
+    RCTRootView *rootView =
+    [[RCTRootView alloc] initWithBundleURL : jsCodeLocation
+                         moduleName        : @"RNHighScores"
+                         initialProperties :
+     @{
+       @"scores" : @[
+               @{
+                   @"name" : @"Alex",
+                   @"value": @"42"
+                   },
+               @{
+                   @"name" : @"Joel",
+                   @"value": @"10"
+                   }
+               ]
+       }
+                          launchOptions    : nil];
+    UIViewController *vc = [[UIViewController alloc] init];
+    vc.view = rootView;
+    [self presentViewController:vc animated:YES completion:nil];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+@end
+----------
+创建一个按钮，然后在按钮的点击事件中加载bundle中刚刚编辑好的index.ios.js文件，将js文件渲染到一个RCTRootView上，最后将RCTRootView添加到一个新创建的viewcontroller上，并跳转过去。
+注意：在项目运行时会用http方式请求本地开启的react-native服务器，所以在Xcode7.0+上需要修改plist文件，保证http协议能够正常访问：
+----------
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>localhost</key>
+        <dict>
+            <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+        </dict>
+    </dict>
+</dict>
+----------
+===== 运行Packager（react-native服务端）
+----------
+# From the root of your project, where the `node_modules` directory is located.
+$ npm start
+----------
+===== 运行应用
+用Xcode打开项目，选择模拟器，command+R运行。同样，想要添加修改，修改index.ios.js文件即可。
